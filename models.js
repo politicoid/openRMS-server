@@ -1,9 +1,9 @@
-var mongoose = require('mongoose');
+var mongoose = require('mongoose'), Schema = mongoose.Schema;
 mongoose.connect('mongodb://localhost/agora');
 
 var models = new Object();
 
-var UserSchema = mongoose.model({
+var UserSchema = Schema({
 	username		: { type: String, required: true, trim: true }
   , password		: { type: String, required: true, trim: false }
   , first			: { type: String, required: true, trim: true }
