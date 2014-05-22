@@ -1,111 +1,67 @@
-var WebSocketServer = require('ws').Server, wss = new WebSocketServer({port: 9000});
+// Can't get everything to run on a single port so information is on 8081 and HTTP server is on 8080
+var http = require('http'),
+	express = require('express'),
+	app = express(),
+	models = require('./models');
 
-var models = require('./models');
 
-wss.on('connection', function(ws) {
-	var sendMessage = function(msg)
-	{
-		msg.id = new Date;
-		ws.send(JSON.stringify(msg));
-	};
-	var handleError = function(err)
-	{
-			var msg = {
-				request_id: request.id,
-				message: "fail",
-			};
-			sendMessage(msg);
-	};
+var start = function()
+{
+	console.log("Starting server...");
+	app.set('port', process.env.PORT || 8080);
+	app.use(express.static(__dirname + '/../client'));
+	var server = require('./dataserver')(app, models);
+	app.listen(app.get('port'));
+};
 
-	// Perform application authentication
-	ws.onmessage = function(message)
+models['shop'].find({_id : 0}, function (err, docs) {
+	if (docs.length)
 	{
-		// Left blank for now... need to implement applications first!
-		// If authenticated
-		ws.onmessage = function(message) {
-			var request = JSON.parse(message.data);
-			// Select the model
-			var resource = request.resource;
-			// Which operation? Search, Create, Read, Update, or Delete
-			var operation = request.operation;
-			var Model = models[resource];
-			if (Model != null)
+		start();
+	} else
+	{
+		// Configure server before starting
+		console.log("Entering server configuration mode...");
+		var Shop = models['shop'];
+		var shop = new Shop({name: "agora", stylized: "Agora", url: "socialmarket.ag", short_desc: "The world's premier online social market."});
+		shop.save(function(err) {
+			if (err)
 			{
-				operation = operation.toLowerCase().trim();
-				switch (operation)
-				{
-					case "create":
-						var data = request.data;
-						if (data != null)
-						{
-							var object = new Model(data);
-							object.save(function(err) {
-								if (err) return handleError(err);
-								Model.findById(object, function (err, doc) {
-									if (err) return handleError(err);
-									var msg = {
-										request_id: request.id,
-										message: "success",
-										data: doc
-									};
-									sendMessage(msg);
-								});
-							});
-						} else
-						{
-							sendError("Data field is empty");
-						}
-						break;
-					case "read":
-						var id = request.data;
-						if (id != null)
-						{
-							Model.findById(id, function (err, doc) {
-								if (err) return handleError(err);
-								var msg = {
-									request_id: request.id,
-									message: "success",
-									data: doc
-								};
-								sendMessage(msg);
-							});
-						}
-						break;
-					case "update":
-						break;
-					case "delete":
-						var id = request.data;
-						if (id != null)
-						{
-							Model.findByIdAndRemove(id, function (err, doc) {
-								if (err) return handleError(err);
-								var msg = {
-									request_id: request.id,
-									message: "success",
-									data: doc
-								};
-								sendMessage(msg);
-							});
-						}
-						break;
-					case "search":
-					default:
-						Model.find(function (err, objects)
-						{
-							if (err) return handleError(err);
-							var msg = {
-								request_id: request.id,
-								message: "success",
-								data: objects
-							};
-							sendMessage(msg);
-						});
-						break;
-				}
+				console.log("Unable to save root shop: " + err);
 			} else
 			{
-				sendError("Resource " + resource + " is not defined.");
+				Shop.findById(shop._id, function (err, doc) {
+					if (err)
+					{
+						console.log("Unable to find root shop: " + err);
+					} else
+					{
+						console.log("Added root shop: _id = " + doc._id);
+						var User = models['user'];
+						var salt = require('node-uuid').v4();
+						var password = require('crypto').createHash('sha512').update(salt + "password").digest("hex");
+						var admin = new User({username: "admin", password: password, salt: salt, shop: shop._id});
+						admin.save(function(err) {
+							if (err)
+							{
+								console.log("Unable to save admin: " + err);
+							} else
+							{
+								User.findById(admin._id, function (err, doc) {
+									if (err)
+									{
+										console.log("Unable to find admin: " + err);
+									} else
+									{
+										start();
+									}
+								});
+							}
+						});
+					}
+				});
 			}
-		};
-	};
+		});
+		
+	}
 });
