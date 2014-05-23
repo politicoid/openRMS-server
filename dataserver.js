@@ -72,80 +72,13 @@ var dataserver = function(app, models)
 					if (Model != null)
 					{
 						operation = operation.toLowerCase().trim();
-						switch (operation)
+						var op = Model[operation];
+						if (op != null)
 						{
-							case "create":
-								var data = request.data;
-								if (data != null)
-								{
-									var object = new Model(data);
-									object.save(function(err) {
-										if (err) return handleError(err, request);
-										Model.findById(object._id, function (err, doc) {
-											if (err) return handleError(err, request);
-											var msg = {
-												message: "success",
-												data: doc
-											};
-											sendMessage(msg, request);
-										});
-									});
-								} else
-								{
-									handleError("Data field is empty", request);
-								}
-								break;
-							case "read":
-								var id = request.data;
-								if (id != null)
-								{
-									Model.findById(id, function (err, doc) {
-										if (err) return handleError(err, request);
-										var msg = {
-											message: "success",
-											data: doc
-										};
-										sendMessage(msg, request);
-									});
-								}
-								break;
-							case "update":
-								break;
-							case "delete":
-								var id = request.data;
-								if (id != null)
-								{
-									Model.findByIdAndRemove(id, function (err, doc) {
-										if (err) return handleError(err, request);
-										var msg = {
-											message: "success",
-											data: doc
-										};
-										sendMessage(msg, request);
-									});
-								}
-								break;
-							case "search":
-								var constraints = {};
-								if (request.data != null)
-									constraints = data;
-								Model.find({}, function (err, objects)
-								{
-									if (err) return handleError(err, request);
-									var msg = {
-										message: "success",
-										data: objects
-									};
-									sendMessage(msg, request);
-								});
-								break;
-							default:
-								// Turn to model specific operations
-								var op = Model[operation];
-								if (op != null)
-								{
-									op(request, session);
-								}
+							op.call(Model, request, session);
+						} else
+						{
+							handleError("Resource "  + resource + " does not provide " + operation);
 						}
 					} else
 					{

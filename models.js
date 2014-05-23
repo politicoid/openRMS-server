@@ -3,8 +3,9 @@
  * 
  * These model definitions include various meta data descriptors
  * visible		- Model will only be listed in model search if visible is true (default)
- * internal		- Only used by the server. Should not be viewed or set by clients
  * ignore_null	- On update, if field is null, do not modify original data (name likely to change)
+ * internal		- Only used by the server. Should not be viewed or set by clients (automatically sets ignore_null)
+ * parent		- Parent object (automatically embeds ref option)
  */
 var mongoose = require('mongoose'),
 	Schema = mongoose.Schema,
@@ -28,10 +29,25 @@ function createSchema(format, visible)
 		visible = true;
 	format.created_on = {type: Date, internal: true};
 	format.updated_on = {type: Date, internal: true};
+	var internals = [];
+	var ignores = [];
+	for (var key in format)
+	{
+		var field = format[key];
+		if (field.parent != null)
+			field.ref = field.parent;
+		if (field.internal)
+		{
+			if (field.ignore_null == null)
+				field.ignore_null = true;
+			if (field.ignore_null)
+				ignores.push(key);
+			internals.push(key);
+		}
+	}
 	var schema = Schema(format);
 	schema.pre('save', function(next){
 		this.updated_at = new Date();
-		console.log(this.updated_at);
 		if ( !this.created_at ) {
 			this.created_at = this.updated_at;
 		}
@@ -39,6 +55,83 @@ function createSchema(format, visible)
 	});
 	// This is so the server will only send models which are set to visible
 	schema.virtual('visible').get(function() {return visible;});
+	schema.methods.toJSON = function() {
+		var obj = this.toObject();
+		for (var i = 0; i < internals.length; i++)
+		{
+			delete obj[internals[i]];
+		}
+		return obj;
+	};
+	// Creates a new document. Returns an error if the document already exists
+	schema.statics.create = function(request, session)
+	{
+		var data = request.data;
+		if (data != null)
+		{
+			var object = new Model(data);
+			object.save(function(err) {
+				if (err) return session.handleError(err, request);
+				this.findById(object._id, function (err, doc) {
+					if (err) return session.handleError(err, request);
+					var msg = {
+						message: "success",
+						data: doc
+					};
+					session.sendMessage(msg, request);
+				});
+			});
+		} else
+		{
+			session.handleError("Data field is empty", request);
+		}
+	};
+	schema.statics.update = function(request, session)
+	{
+	};
+	schema.statics.search = function(request, session) {
+		var constraints = {};
+		console.log(request);
+		if (request.data != null)
+			constraints = request.data;
+		this.find({}, function (err, objects)
+		{
+			if (err) return session.handleError(err, request);
+			var msg = {
+				message: "success",
+				data: objects
+			};
+			session.sendMessage(msg, request);
+		});
+	};
+	schema.statics.remove = function(request, session) {
+		var id = request.data;
+		if (id != null)
+		{
+			this.findByIdAndRemove(id, function (err, doc) {
+				if (err) return session.handleError(err, request);
+				var msg = {
+					message: "success",
+					data: doc
+				};
+				session.sendMessage(msg, session.request);
+			});
+		}
+	};
+	schema.statics.read = function(request, session) {
+		var id = request.data;
+		if (id != null)
+		{
+			this.findById(id, function (err, doc) {
+				if (err) return handleError(err, request);
+				var msg = {
+					message: "success",
+					data: doc
+				};
+				sendMessage(msg, request);
+			});
+		}
+	};
 	return schema;
 }
 function createModel(schema, name)
@@ -49,7 +142,7 @@ function createModel(schema, name)
 
 var UserSchema = {
 	username		: { type: String, required: true, trim: true}
-  , salt			: { type: String, required: true, trim: false, ignore_null: true, internal: true }
+  , salt			: { type: String, required: true, trim: false, internal: true }
   , password		: { type: String, required: true, trim: false, ignore_null: true }
   , first			: { type: String, trim: true }
   , last			: { type: String, trim: true }
@@ -59,26 +152,31 @@ var UserSchema = {
 
 var ShopSchema = {
 	name			: { type: String, required: true, trim: true }
-  , stylized		: { type: String, required: true, trim: true }
   , url				: { type: String, required: true, trim: true }
   , short_desc		: { type: String, required: true, trim: true }
-  , items			: [ { type: Number, ref: "items" }]
+  , items			: [ { type: Number, ref: "item", ignore_null: true }]
 };
 var ItemSchema = {
 	name			: { type: String, required: true, trim: true }
-  , shop			: { type: Number, required: true, ref: "shop" }	
+  , shop			: { type: Number, required: true, parent: "shop" }	
   , sku				: { type: String, required: true, trim: true }
   , short_desc		: { type: String, required: true, trim: true }
   , long_desc		: { type: String, required: true, trim: true }
   , prices			: [{type: Number, ref: "price"}]
-  , item_options	: [{type: Number, ref: "item_options"}]
+  , item_options	: [{type: Number, ref: "item_option"}]
   , item_categories	: [{type: Number, ref: "item_category"}]
+};
+
+var ItemOptionSchema = {
+	name			: { type: String, required: true, trim: true }
+  , item			: { type: Number, parent: "item" }
+  , option			: { type: Number, ref: "item" }
 };
 
 var ItemCategorySchema = {
 	name			: { type: String, required: true, trim: true }
-  , shop			: { type: Number, required: true, ref: "shop" }	
-  , items			: [ { type: Number, ref: "item" } ]
+  , shop			: { type: Number, required: true, parent: "shop" }	
+  , items			: [ { type: Number, parent: "item" } ]
 };
 
 var PriceSchema = {
@@ -101,7 +199,7 @@ User.statics.login = function(request, session) {
 	this.findOne({ 'username': username }, function (err, doc) {
 		if (err)
 		{
-			session.handleError("Authenication failed");
+			session.handleError(err, request);
 		} else
 		{
 			var sha512 = crypto.createHash('sha512').update(doc.salt + password).digest("hex");
@@ -112,10 +210,10 @@ User.statics.login = function(request, session) {
 					message: "success",
 					data: session.id
 				};
-				session.sendMessage(request);
+				session.sendMessage(msg, request);
 			} else
 			{
-				session.handleError("Authenication failed");
+				session.handleError("Authenication failed", request);
 			}
 		}
 	});
@@ -126,10 +224,12 @@ var Item = createSchema(ItemSchema);
 var ItemCategory = createSchema(ItemCategorySchema);
 var Price = createSchema(PriceSchema);
 var Currency = createSchema(CurrencySchema);
+var ItemOption = createSchema(ItemOptionSchema);
 
 createModel(User, "user");
 createModel(Shop, "shop");
 createModel(Item, "item");
+createModel(ItemOption, "item_option");
 createModel(ItemCategory, "item_category");
 createModel(Price, "price");
 createModel(Currency, "currency");

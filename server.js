@@ -23,7 +23,7 @@ models['shop'].find({_id : 0}, function (err, docs) {
 		// Configure server before starting
 		console.log("Entering server configuration mode...");
 		var Shop = models['shop'];
-		var shop = new Shop({name: "agora", stylized: "Agora", url: "socialmarket.ag", short_desc: "The world's premier online social market."});
+		var shop = new Shop({name: "Agora Social Market", url: "socialmarket.ag", short_desc: "The world's premier online social market."});
 		shop.save(function(err) {
 			if (err)
 			{
