@@ -1,3 +1,11 @@
+/*
+ * Model definitions
+ * 
+ * These model definitions include various meta data descriptors
+ * visible		- Model will only be listed in model search if visible is true (default)
+ * internal		- Only used by the server. Should not be viewed or set by clients
+ * ignore_null	- On update, if field is null, do not modify original data (name likely to change)
+ */
 var mongoose = require('mongoose'),
 	Schema = mongoose.Schema,
 	autoIncrement = require('mongoose-auto-increment'),
@@ -18,11 +26,12 @@ function createSchema(format, visible)
 {
 	if (visible == null)
 		visible = true;
-	format.created_on = {type: Date};
-	format.updated_on = {type: Date};
+	format.created_on = {type: Date, internal: true};
+	format.updated_on = {type: Date, internal: true};
 	var schema = Schema(format);
 	schema.pre('save', function(next){
-		this.updated_at = new Date;
+		this.updated_at = new Date();
+		console.log(this.updated_at);
 		if ( !this.created_at ) {
 			this.created_at = this.updated_at;
 		}
@@ -39,9 +48,9 @@ function createModel(schema, name)
 }
 
 var UserSchema = {
-	username		: { type: String, required: true, trim: true, visible: true }
-  , salt			: { type: String, required: true, trim: false }
-  , password		: { type: String, required: true, trim: false }
+	username		: { type: String, required: true, trim: true}
+  , salt			: { type: String, required: true, trim: false, ignore_null: true, internal: true }
+  , password		: { type: String, required: true, trim: false, ignore_null: true }
   , first			: { type: String, trim: true }
   , last			: { type: String, trim: true }
   , friends			: [ { type: Number, ref: "user" } ]
@@ -57,6 +66,7 @@ var ShopSchema = {
 };
 var ItemSchema = {
 	name			: { type: String, required: true, trim: true }
+  , shop			: { type: Number, required: true, ref: "shop" }	
   , sku				: { type: String, required: true, trim: true }
   , short_desc		: { type: String, required: true, trim: true }
   , long_desc		: { type: String, required: true, trim: true }
@@ -67,18 +77,20 @@ var ItemSchema = {
 
 var ItemCategorySchema = {
 	name			: { type: String, required: true, trim: true }
-	, items			: [ { type: Number, ref: "item" } ]
+  , shop			: { type: Number, required: true, ref: "shop" }	
+  , items			: [ { type: Number, ref: "item" } ]
 };
 
 var PriceSchema = {
 	name			: { type: String, required: true, trim: true }
+  , shop			: { type: Number, required: true, ref: "shop" }	
   , value			: {type: Number, required: true}
   , currency		: {type: Number, required: true, ref: "currency"}
 };
 
 var CurrencySchema = {
 	name			: { type: String, required: true, trim: true }
-	, symbol		: { type: String, require: true, trim: true }
+  , symbol			: { type: String, require: true, trim: true }
 };
 
 var User = createSchema(UserSchema);

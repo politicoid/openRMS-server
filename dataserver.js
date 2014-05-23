@@ -54,8 +54,8 @@ var dataserver = function(app, models)
 							} else
 							{
 								var model = models[request.data];
-								if (model == null) return handleError("No such resource");
-								if (!model.visible) return handleError("Model " + request.data + " is not public");
+								if (model == null) return handleError("No such resource: " + request.data, request);
+								if (!model.visible) return handleError("Model " + request.data + " is not public", request);
 								var msg = {
 									message: "success",
 									data: model.schema.paths
@@ -80,9 +80,9 @@ var dataserver = function(app, models)
 								{
 									var object = new Model(data);
 									object.save(function(err) {
-										if (err) return handleError(err);
+										if (err) return handleError(err, request);
 										Model.findById(object._id, function (err, doc) {
-											if (err) return handleError(err);
+											if (err) return handleError(err, request);
 											var msg = {
 												message: "success",
 												data: doc
@@ -92,7 +92,7 @@ var dataserver = function(app, models)
 									});
 								} else
 								{
-									handleError("Data field is empty");
+									handleError("Data field is empty", request);
 								}
 								break;
 							case "read":
@@ -100,7 +100,7 @@ var dataserver = function(app, models)
 								if (id != null)
 								{
 									Model.findById(id, function (err, doc) {
-										if (err) return handleError(err);
+										if (err) return handleError(err, request);
 										var msg = {
 											message: "success",
 											data: doc
@@ -116,7 +116,7 @@ var dataserver = function(app, models)
 								if (id != null)
 								{
 									Model.findByIdAndRemove(id, function (err, doc) {
-										if (err) return handleError(err);
+										if (err) return handleError(err, request);
 										var msg = {
 											message: "success",
 											data: doc
@@ -131,7 +131,7 @@ var dataserver = function(app, models)
 									constraints = data;
 								Model.find({}, function (err, objects)
 								{
-									if (err) return handleError(err);
+									if (err) return handleError(err, request);
 									var msg = {
 										message: "success",
 										data: objects
@@ -154,7 +154,7 @@ var dataserver = function(app, models)
 				}
 			} else
 			{
-				handleError("No resource specified");
+				handleError("No resource specified", request);
 			}
 		};
 		ws.onclose = function()
