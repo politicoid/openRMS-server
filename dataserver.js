@@ -78,7 +78,7 @@ var dataserver = function(app, models)
 							op.call(Model, request, session);
 						} else
 						{
-							handleError("Resource "  + resource + " does not provide " + operation);
+							handleError("Resource "  + resource + " does not provide " + operation, request);
 						}
 					} else
 					{

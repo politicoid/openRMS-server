@@ -23,7 +23,8 @@ models['shop'].find({_id : 0}, function (err, docs) {
 		// Configure server before starting
 		console.log("Entering server configuration mode...");
 		var Shop = models['shop'];
-		var shop = new Shop({name: "Agora Social Market", url: "socialmarket.ag", short_desc: "The world's premier online social market."});
+		var date = new Date();
+		var shop = new Shop({created_on: date, updated_on: date, name: "Agora Social Market", url: "socialmarket.ag", short_desc: "The world's premier online social market."});
 		shop.save(function(err) {
 			if (err)
 			{
@@ -40,7 +41,7 @@ models['shop'].find({_id : 0}, function (err, docs) {
 						var User = models['user'];
 						var salt = require('node-uuid').v4();
 						var password = require('crypto').createHash('sha512').update(salt + "password").digest("hex");
-						var admin = new User({username: "admin", password: password, salt: salt, shop: shop._id});
+						var admin = new User({create_on: date, updated_on: date, username: "admin", password: password, salt: salt, shop: shop._id});
 						admin.save(function(err) {
 							if (err)
 							{

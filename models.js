@@ -2,10 +2,12 @@
  * Model definitions
  * 
  * These model definitions include various meta data descriptors
+ * name			- Stylized column name
  * visible		- Model will only be listed in model search if visible is true (default)
  * ignore_null	- On update, if field is null, do not modify original data (name likely to change)
  * internal		- Only used by the server. Should not be viewed or set by clients (automatically sets ignore_null)
  * parent		- Parent object (automatically embeds ref option)
+ * media_type	- Media types as listed in official registry of media types: http://www.iana.org/assignments/media-types/media-types.xhtml
  */
 var mongoose = require('mongoose'),
 	Schema = mongoose.Schema,
@@ -34,6 +36,10 @@ function createSchema(format, visible)
 	for (var key in format)
 	{
 		var field = format[key];
+		if (field[0] != null)
+			field = field[0];
+		if (field.name == null)
+			field.name = key;
 		if (field.parent != null)
 			field.ref = field.parent;
 		if (field.internal)
@@ -46,13 +52,6 @@ function createSchema(format, visible)
 		}
 	}
 	var schema = Schema(format);
-	schema.pre('save', function(next){
-		this.updated_at = new Date();
-		if ( !this.created_at ) {
-			this.created_at = this.updated_at;
-		}
-		next();
-	});
 	// This is so the server will only send models which are set to visible
 	schema.virtual('visible').get(function() {return visible;});
 	schema.methods.toJSON = function() {
@@ -66,13 +65,16 @@ function createSchema(format, visible)
 	// Creates a new document. Returns an error if the document already exists
 	schema.statics.create = function(request, session)
 	{
+		var that = this;
 		var data = request.data;
 		if (data != null)
 		{
-			var object = new Model(data);
+			data.updated_at = new Date();
+			data.created_at = data.updated_at;
+			var object = new that(data);
 			object.save(function(err) {
 				if (err) return session.handleError(err, request);
-				this.findById(object._id, function (err, doc) {
+				that.findById(object._id, function (err, doc) {
 					if (err) return session.handleError(err, request);
 					var msg = {
 						message: "success",
@@ -88,10 +90,37 @@ function createSchema(format, visible)
 	};
 	schema.statics.update = function(request, session)
 	{
+		var that = this;
+		var doc = request.data;
+		if (doc == null) return session.handleError("No data specified", request);
+		var id = doc._id;
+		if (id == null) return session.handleError("No ID specified. Use create for new documents.");
+		that.findById(id, function(err, old) {
+			if (err != null) return session.handleError(err, request);
+			for (var key in doc)
+			{
+				var val = doc[key];
+				if (val == null)
+				{
+					if (ignores[key] == null)
+						old[key] = null;
+				} else
+				{
+					old[key] = doc[key];
+				}
+			}
+			old.save(function (err) {
+				if (err) return session.handleError(err, request);
+				var msg = {
+					message: "success",
+					data: doc
+				};
+				session.sendMessage(msg, request);
+			});
+		});
 	};
 	schema.statics.search = function(request, session) {
 		var constraints = {};
-		console.log(request);
 		if (request.data != null)
 			constraints = request.data;
 		this.find({}, function (err, objects)
@@ -141,7 +170,7 @@ function createModel(schema, name)
 }
 
 var UserSchema = {
-	username		: { type: String, required: true, trim: true}
+	username		: { type: String, required: true, trim: true }
   , salt			: { type: String, required: true, trim: false, internal: true }
   , password		: { type: String, required: true, trim: false, ignore_null: true }
   , first			: { type: String, trim: true }
@@ -161,10 +190,10 @@ var ItemSchema = {
   , shop			: { type: Number, required: true, parent: "shop" }	
   , sku				: { type: String, required: true, trim: true }
   , short_desc		: { type: String, required: true, trim: true }
-  , long_desc		: { type: String, required: true, trim: true }
+  , long_desc		: { type: String, required: true, trim: true, name: 'Description', media_type: 'text/html' }
   , prices			: [{type: Number, ref: "price"}]
   , item_options	: [{type: Number, ref: "item_option"}]
-  , item_categories	: [{type: Number, ref: "item_category"}]
+  , item_categories	: [{type: Number, parent: "item_category"}]
 };
 
 var ItemOptionSchema = {
@@ -218,7 +247,6 @@ User.statics.login = function(request, session) {
 		}
 	});
 };
-
 var Shop = createSchema(ShopSchema);
 var Item = createSchema(ItemSchema);
 var ItemCategory = createSchema(ItemCategorySchema);
