@@ -8,6 +8,9 @@
  * internal		- Only used by the server. Should not be viewed or set by clients (automatically sets ignore_null)
  * parent		- Parent object (automatically embeds ref option)
  * media_type	- Media types as listed in official registry of media types: http://www.iana.org/assignments/media-types/media-types.xhtml
+ * 
+ * Keys:
+ * readable_key	- This key is human readable
  */
 var mongoose = require('mongoose'),
 	Schema = mongoose.Schema,
@@ -33,27 +36,39 @@ function createSchema(format, visible)
 	format.updated_on = {type: Date, internal: true};
 	var internals = [];
 	var ignores = [];
+	var keys = null;
 	for (var key in format)
 	{
 		var field = format[key];
-		if (field[0] != null)
-			field = field[0];
-		if (field.name == null)
-			field.name = key;
-		if (field.parent != null)
-			field.ref = field.parent;
-		if (field.internal)
+		if (key == 'keys')
 		{
-			if (field.ignore_null == null)
-				field.ignore_null = true;
+			keys = field;
+			delete format[key];
+		} else
+		{
+			if (field[0] != null)
+				field = field[0];
+			if (field.name == null)
+				field.name = key;
+			if (field.parent != null)
+				field.ref = field.parent;
+			if (field.internal)
+			{
+				if (field.ignore_null == null)
+					field.ignore_null = true;
+			}
 			if (field.ignore_null)
 				ignores.push(key);
 			internals.push(key);
 		}
 	}
-	var schema = Schema(format);
+	var schema = Schema(format, { getters: true, virtuals: false });
 	// This is so the server will only send models which are set to visible
-	schema.virtual('visible').get(function() {return visible;});
+	schema.visible = visible;
+	// Default human_readable key to the id
+	if (keys.human_readable == null)
+		keys.human_readable = '_id';
+	schema.keys = keys;
 	schema.methods.toJSON = function() {
 		var obj = this.toObject();
 		for (var i = 0; i < internals.length; i++)
@@ -120,21 +135,30 @@ function createSchema(format, visible)
 		});
 	};
 	schema.statics.search = function(request, session) {
+		var data = request.data;
 		var constraints = {};
-		if (request.data != null)
-			constraints = request.data;
-		this.find({}, function (err, objects)
+		if (data != null)
 		{
-			if (err) return session.handleError(err, request);
-			var msg = {
-				message: "success",
-				data: objects
-			};
-			session.sendMessage(msg, request);
-		});
+			constraints = data.id;
+			var populate = data.populate;
+			var query = this.find(constraints);
+			if (populate != null)
+				query = query.populate(populate);
+			query.exec(function (err, docs) {
+				if (err) return handleError(err, request);
+				var msg = {
+					message: "success",
+					data: docs
+				};
+				sendMessage(msg, request);
+			});
+		}
 	};
 	schema.statics.remove = function(request, session) {
-		var id = request.data;
+		var data = request.data;
+		var id = null;
+		if (data != null)
+			id = data.id;
 		if (id != null)
 		{
 			this.findByIdAndRemove(id, function (err, doc) {
@@ -148,17 +172,26 @@ function createSchema(format, visible)
 		}
 	};
 	schema.statics.read = function(request, session) {
-		var id = request.data;
-		if (id != null)
+		var data = request.data;
+		var id = null;
+		if (data != null)
 		{
-			this.findById(id, function (err, doc) {
-				if (err) return handleError(err, request);
-				var msg = {
-					message: "success",
-					data: doc
-				};
-				sendMessage(msg, request);
-			});
+			id = data.id;
+			var populate = data.populate;
+			if (id != null)
+			{
+				var query = this.findById(id);
+				if (populate != null)
+					query = query.populate(populate);
+				query.exec(function (err, doc) {
+					if (err) return handleError(err, request);
+					var msg = {
+						message: "success",
+						data: doc
+					};
+					sendMessage(msg, request);
+				});
+			}
 		}
 	};
 	return schema;
@@ -177,6 +210,7 @@ var UserSchema = {
   , last			: { type: String, trim: true }
   , friends			: [ { type: Number, ref: "user" } ]
   , role			: [ { type: Number, ref: "user_role"}]
+  , keys			: { human_readable: 'username' }
 };
 
 var ShopSchema = {
@@ -184,6 +218,7 @@ var ShopSchema = {
   , url				: { type: String, required: true, trim: true }
   , short_desc		: { type: String, required: true, trim: true }
   , items			: [ { type: Number, ref: "item", ignore_null: true }]
+  , keys			: { human_readable: 'name' }
 };
 var ItemSchema = {
 	name			: { type: String, required: true, trim: true }
@@ -194,18 +229,21 @@ var ItemSchema = {
   , prices			: [{type: Number, ref: "price"}]
   , item_options	: [{type: Number, ref: "item_option"}]
   , item_categories	: [{type: Number, parent: "item_category"}]
+  , keys			: { human_readable: 'name' }
 };
 
 var ItemOptionSchema = {
 	name			: { type: String, required: true, trim: true }
   , item			: { type: Number, parent: "item" }
   , option			: { type: Number, ref: "item" }
+  , keys			: { human_readable: 'name' }
 };
 
 var ItemCategorySchema = {
 	name			: { type: String, required: true, trim: true }
   , shop			: { type: Number, required: true, parent: "shop" }	
   , items			: [ { type: Number, parent: "item" } ]
+  , keys			: { human_readable: 'name' }
 };
 
 var PriceSchema = {
@@ -213,11 +251,13 @@ var PriceSchema = {
   , shop			: { type: Number, required: true, ref: "shop" }	
   , value			: {type: Number, required: true}
   , currency		: {type: Number, required: true, ref: "currency"}
+  , keys			: { human_readable: 'name' }
 };
 
 var CurrencySchema = {
 	name			: { type: String, required: true, trim: true }
   , symbol			: { type: String, require: true, trim: true }
+  , keys			: { human_readable: 'name' }
 };
 
 var User = createSchema(UserSchema);
@@ -261,4 +301,3 @@ createModel(ItemOption, "item_option");
 createModel(ItemCategory, "item_category");
 createModel(Price, "price");
 createModel(Currency, "currency");
-

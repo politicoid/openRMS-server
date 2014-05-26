@@ -39,29 +39,28 @@ var dataserver = function(app, models)
 					var operation = request.operation;
 					switch (operation)
 					{
+						case "read":
+							var model = models[request.data];
+							if (model == null) return handleError("No such resource: " + request.data, request);
+							if (!model.schema.visible) return handleError("Model " + request.data + " is not public", request);
+							var msg = {
+								message: "success",
+								data: { paths: model.schema.paths, keys: model.schema.keys }
+							};
+							sendMessage(msg, request);
+							break;
 						case "search":
-							if (request.data == null)
-							{
-								var paths = {};
-								for (var key in models) {
-									paths[key] = models[key].schema.paths;
-								}
-								var msg = {
-									message: "success",
-									data: paths
-								};
-								sendMessage(msg, request);
-							} else
-							{
-								var model = models[request.data];
-								if (model == null) return handleError("No such resource: " + request.data, request);
-								if (!model.visible) return handleError("Model " + request.data + " is not public", request);
-								var msg = {
-									message: "success",
-									data: model.schema.paths
-								};
-								sendMessage(msg, request);
+							var schema = {};
+							for (var key in models) {
+								var model = models[key];
+								if (model.schema.visible)
+									schema[key] = { paths: model.schema.paths, keys: model.schema.keys };
 							}
+							var msg = {
+								message: "success",
+								data: schema
+							};
+							sendMessage(msg, request);
 							break;
 					}
 				} else
