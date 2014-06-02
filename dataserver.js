@@ -42,10 +42,10 @@ var dataserver = function(app, models)
 						case "read":
 							var model = models[request.data];
 							if (model == null) return handleError("No such resource: " + request.data, request);
-							if (!model.schema.visible) return handleError("Model " + request.data + " is not public", request);
+							if (!model.visible()) return handleError("Model " + request.data + " is not public", request);
 							var msg = {
 								message: "success",
-								data: { paths: model.schema.paths, keys: model.schema.keys }
+								data: { paths: model.schema.paths, keys: model.keys() }
 							};
 							sendMessage(msg, request);
 							break;
@@ -53,8 +53,8 @@ var dataserver = function(app, models)
 							var schema = {};
 							for (var key in models) {
 								var model = models[key];
-								if (model.schema.visible)
-									schema[key] = { paths: model.schema.paths, keys: model.schema.keys };
+								if (model.visible())
+									schema[key] = { paths: model.schema.paths, keys: model.keys() };
 							}
 							var msg = {
 								message: "success",

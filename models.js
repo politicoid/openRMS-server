@@ -2,15 +2,15 @@
  * Model definitions
  * 
  * These model definitions include various meta data descriptors
- * name			- Stylized column name
- * visible		- Model will only be listed in model search if visible is true (default)
- * ignore_null	- On update, if field is null, do not modify original data (name likely to change)
- * internal		- Only used by the server. Should not be viewed or set by clients (automatically sets ignore_null)
- * parent		- Parent object (automatically embeds ref option)
- * media_type	- Media types as listed in official registry of media types: http://www.iana.org/assignments/media-types/media-types.xhtml
+ * name				- Stylized column name
+ * visible			- Model will only be listed in model search if visible is true (default)
+ * ignore_null		- On update, if field is null, do not modify original data (name likely to change)
+ * internal			- Only used by the server. Should not be viewed or set by clients (automatically sets ignore_null)
+ * parent			- Parent object (automatically embeds ref option)
+ * media_type		- Media types as listed in official registry of media types: http://www.iana.org/assignments/media-types/media-types.xhtml
  * 
  * Keys:
- * readable_key	- This key is human readable
+ * human_readable	- This key is human readable
  */
 var mongoose = require('mongoose'),
 	Schema = mongoose.Schema,
@@ -56,19 +56,20 @@ function createSchema(format, visible)
 			{
 				if (field.ignore_null == null)
 					field.ignore_null = true;
+				internals.push(key);
 			}
 			if (field.ignore_null)
 				ignores.push(key);
-			internals.push(key);
 		}
 	}
-	var schema = Schema(format, { getters: true, virtuals: false });
-	// This is so the server will only send models which are set to visible
-	schema.visible = visible;
 	// Default human_readable key to the id
 	if (keys.human_readable == null)
 		keys.human_readable = '_id';
-	schema.keys = keys;
+	
+	var schema = Schema(format);
+	// This is so the server will only send models which are set to visible
+	schema.statics.visible = function() { return visible; };
+	schema.statics.keys = function() { return keys; };
 	schema.methods.toJSON = function() {
 		var obj = this.toObject();
 		for (var i = 0; i < internals.length; i++)
@@ -139,19 +140,22 @@ function createSchema(format, visible)
 		var constraints = {};
 		if (data != null)
 		{
-			constraints = data.id;
-			var populate = data.populate;
-			var query = this.find(constraints);
-			if (populate != null)
-				query = query.populate(populate);
-			query.exec(function (err, docs) {
-				if (err) return handleError(err, request);
-				var msg = {
-					message: "success",
-					data: docs
-				};
-				sendMessage(msg, request);
-			});
+			if (data.constraints != null)
+			{
+				constraints = data.constraints;
+				var populate = data.populate;
+				var query = this.find(constraints);
+				if (populate != null)
+					query = query.populate(populate);
+				query.exec(function (err, docs) {
+					if (err) return handleError(err, request);
+					var msg = {
+						message: "success",
+						data: docs
+					};
+					sendMessage(msg, request);
+				});
+			}
 		}
 	};
 	schema.statics.remove = function(request, session) {
@@ -240,9 +244,10 @@ var ItemOptionSchema = {
 };
 
 var ItemCategorySchema = {
-	name			: { type: String, required: true, trim: true }
+	name			: { type: String, required: true, trim: true },
+	parent			: { type: Number, ref: "item_category"}
   , shop			: { type: Number, required: true, parent: "shop" }	
-  , items			: [ { type: Number, parent: "item" } ]
+  , items			: [ { type: Number, ref: "item" } ]
   , keys			: { human_readable: 'name' }
 };
 
