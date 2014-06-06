@@ -65,7 +65,6 @@ var dataserver = function(app, models)
 					}
 				} else
 				{
-					// Which operation? Search, Create, Read, Update, or Delete
 					var operation = request.operation;
 					var Model = models[resource];
 					if (Model != null)
@@ -74,7 +73,14 @@ var dataserver = function(app, models)
 						var op = Model[operation];
 						if (op != null)
 						{
-							op.call(Model, request, session);
+							var mod = models['user'];
+							if (session.user)
+								mod = session.user;
+							mod.accessResource(resource, operation, function (err, doc) {
+								console.log(doc);
+								if (err) return handleError(err, request);
+								op.call(Model, request, session);
+							});
 						} else
 						{
 							handleError("Resource "  + resource + " does not provide " + operation, request);

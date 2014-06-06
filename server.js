@@ -26,43 +26,32 @@ models['shop'].find({_id : 0}, function (err, docs) {
 		var date = new Date();
 		var shop = new Shop({created_on: date, updated_on: date, name: "Agora Social Market", url: "socialmarket.ag", short_desc: "The world's premier online social market."});
 		shop.save(function(err) {
-			if (err)
-			{
-				console.log("Unable to save root shop: " + err);
-			} else
-			{
-				Shop.findById(shop._id, function (err, doc) {
-					if (err)
-					{
-						console.log("Unable to find root shop: " + err);
-					} else
-					{
-						console.log("Added root shop: _id = " + doc._id);
+			if (err) return console.log("Unable to save root shop: " + err);
+			Shop.findById(shop._id, function (err, doc) {
+				if (err) return console.log("Unable to find root shop: " + err);
+				console.log("Added root shop: _id = " + doc._id);
+				var UserRole = models['user_role'];
+				var Privilege = models['privilege'];
+				var adminPriv = new Privilege({resources: ["*"], operations: ["*"]});
+				adminPriv.save(function(err) {
+					if (err) return console.log("Unable to add admin privilege " + err);
+					var adminRole = new UserRole({role: "admin", privileges: [adminPriv._id]});
+					adminRole.save(function(err) {
+						if (err) return console.log("Unable to add admin role " + err);
 						var User = models['user'];
 						var salt = require('node-uuid').v4();
 						var password = require('crypto').createHash('sha512').update(salt + "password").digest("hex");
-						var admin = new User({create_on: date, updated_on: date, username: "admin", password: password, salt: salt, shop: shop._id});
+						var admin = new User({create_on: date, updated_on: date, username: "admin", password: password, salt: salt, shop: shop._id, roles: [adminRole._id]});
 						admin.save(function(err) {
-							if (err)
-							{
-								console.log("Unable to save admin: " + err);
-							} else
-							{
-								User.findById(admin._id, function (err, doc) {
-									if (err)
-									{
-										console.log("Unable to find admin: " + err);
-									} else
-									{
-										start();
-									}
-								});
-							}
+							if (err) return console.log("Unable to save admin: " + err);
+							User.findById(admin._id, function (err, doc) {
+								if (err) return console.log("Unable to find admin: " + err);
+								start();
+							});
 						});
-					}
+					});
 				});
-			}
+			});
 		});
-		
 	}
 });

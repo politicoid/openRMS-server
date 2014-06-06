@@ -36,7 +36,7 @@ function createSchema(format, visible)
 	format.updated_on = {type: Date, internal: true};
 	var internals = [];
 	var ignores = [];
-	var keys = null;
+	var keys = {};
 	for (var key in format)
 	{
 		var field = format[key];
@@ -213,8 +213,21 @@ var UserSchema = {
   , first			: { type: String, trim: true }
   , last			: { type: String, trim: true }
   , friends			: [ { type: Number, ref: "user" } ]
-  , role			: [ { type: Number, ref: "user_role"}]
+  , roles			: [ { type: Number, ref: "user_role"}]
   , keys			: { human_readable: 'username' }
+};
+
+var UserRoleSchema = {
+	role			: { type: String, required: true, trim: true }
+  , users			: [ { type: Number, parent: "user" } ]
+  , privileges		: [ { type: Number, required: true, ref: "privilege" } ]
+  , keys			: { human_readable: 'role' }
+};
+
+var PrivilegeSchema = {
+	resources		: [ { type: String, required: true, trim: true } ]
+  , operations		: [ { type: String, required: true, trim: true } ]
+  , user_role		: { type: String, parent: "user_role" }
 };
 
 var ShopSchema = {
@@ -265,6 +278,10 @@ var CurrencySchema = {
   , keys			: { human_readable: 'name' }
 };
 
+var AuthorizationSchema = {
+	
+};
+
 var User = createSchema(UserSchema);
 User.statics.login = function(request, session) {
 	var data = request.data;
@@ -292,6 +309,24 @@ User.statics.login = function(request, session) {
 		}
 	});
 };
+
+User.methods.accessResource = function(resource, operation, func) {
+	var roles = this.roles;
+	var find = this.model('user_role').find({'role' : {$in : roles}});
+	var pop = find.populate({path: 'privileges', match: {resources: {$in : ['*', resource]}, operations: {$in: ['*', operation]}}});
+	pop.execute(func);
+};
+// Access control shared for all users. This is mainly used when not logged in. Some of this will be defined in the schema
+User.statics.accessResource = function(resource, operation, func) {
+	// Make sure all users can log in
+	if (resource == "user" && operation == "login")
+		return true;
+//	var find = this.model('user_role').find({'role' : {$in : roles}});
+//	var pop = find.populate({path: 'privileges', match: {resources: {$in : ['*', resource]}, operations: {$in: ['*', operation]}}});
+};
+
+var UserRole = createSchema(UserRoleSchema);
+var Privilege = createSchema(PrivilegeSchema);
 var Shop = createSchema(ShopSchema);
 var Item = createSchema(ItemSchema);
 var ItemCategory = createSchema(ItemCategorySchema);
@@ -305,4 +340,6 @@ createModel(Item, "item");
 createModel(ItemOption, "item_option");
 createModel(ItemCategory, "item_category");
 createModel(Price, "price");
+createModel(Privilege, "privilege");
+createModel(UserRole, "user_role");
 createModel(Currency, "currency");
