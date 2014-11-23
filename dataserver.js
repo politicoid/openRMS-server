@@ -1,5 +1,6 @@
 var uuid = require('node-uuid');
-	
+
+// Replacing model[key] with models.get(key) and having the method return the model from the database should work to allow custom models on the fly
 var dataserver = function(app, models)
 {
 	WebSocketServer = require('ws').Server;
@@ -66,7 +67,13 @@ var dataserver = function(app, models)
 				} else
 				{
 					var operation = request.operation;
+					// Check for primitive model
 					var Model = models[resource];
+					if (Model == null)
+					{
+						// Check for model in database
+						
+					}
 					if (Model != null)
 					{
 						operation = operation.toLowerCase().trim();
@@ -77,7 +84,6 @@ var dataserver = function(app, models)
 							if (session.user)
 								mod = session.user;
 							mod.accessResource(resource, operation, function (err, doc) {
-								console.log(doc);
 								if (err) return handleError(err, request);
 								op.call(Model, request, session);
 							});
