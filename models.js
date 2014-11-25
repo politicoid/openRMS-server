@@ -292,5 +292,8 @@ exports.User = exports['user'];
 exports.UserRole = exports['user_role'];
 exports.Privilege = exports['privilege'];
 
-// Base Model schema
-
+// Custom Model schema
+var CustomModelSchema = {
+	id					: {type: String, required: true, trim: true },
+	family				: {type: String, required: true, trim: true }
+};
