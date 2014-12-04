@@ -319,3 +319,11 @@ var ExcavationSchema = {
 	crew_chief			: {type: Number, parent: "user"},
 	artifacts			: [ {type: Number, parent: "artifact"} ]
 };
+
+var ArtifactType = createSchema(ArtifactTypeSchema);
+var Artifact = createSchema(ArtifactSchema);
+var Excavation = createSchema(ExcavationSchema);
+
+createModel(ArtifactType, "artifact_type");
+createModel(Artifact, "artifact");
+createModel(Excavation, "excavation");
