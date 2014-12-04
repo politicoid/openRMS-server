@@ -288,12 +288,34 @@ createModel(User, "user");
 createModel(Privilege, "privilege");
 createModel(UserRole, "user_role");
 
-exports.User = exports['user'];
-exports.UserRole = exports['user_role'];
-exports.Privilege = exports['privilege'];
-
+/*
 // Custom Model schema
 var CustomModelSchema = {
 	id					: {type: String, required: true, trim: true },
 	family				: {type: String, required: true, trim: true }
+};
+
+var CustomModel = createSchema(CustomModelSchema);
+CustomModel.statics.create = function(request, session) {
+	
+};
+createModel(CustomModel, "custom_model");
+*/
+
+// Include temporarily for project
+var ArtifactTypeSchema = {
+	name				: {type: String, required: true, trim: true}
+};
+
+var ArtifactSchema = {
+	catalog_number		: { type: String, trim: true },
+	artifact_type		: { type: Number, parent: "artifact_type" },
+	dimensions			: { type: String },
+	description			: { type: String, required: true, trim: true},
+	date				: { type: String }
+};
+
+var ExcavationSchema = {
+	crew_chief			: {type: Number, parent: "user"},
+	artifacts			: [ {type: Number, parent: "artifact"} ]
 };
