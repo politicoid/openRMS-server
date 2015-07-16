@@ -87,21 +87,47 @@ function createSchema(format, visible)
 		var data = request.data;
 		if (data != null)
 		{
-			data.updated_on = new Date();
-			data.created_on = data.updated_on;
-			data.fs = [];
-			var object = new that(data);
-			object.save(function(err) {
-				if (err) return session.handleError(err, request);
-				that.findById(object._id, function (err, doc) {
+			var doc = data.doc;
+			doc.updated_on = new Date();
+			doc.created_on = data.updated_on;
+			// Eventually replace with a function so it's possible to create dynamics FS
+			doc.fs = [];
+			var object = new that(doc);
+			var hyperlink = data.hyperlink;
+			var saveObject = function(parent) {
+				object.save(function(err) {
 					if (err) return session.handleError(err, request);
-					var msg = {
-						message: "success",
-						data: doc
-					};
-					session.sendMessage(msg, request);
+					that.findById(object._id, function (err, doc) {
+						if (err) return session.handleError(err, request);
+						if (parent != null)
+						{
+							// Problem with this method of error handling is the document was saved, just not added to parent. But this type of error shouldn't happen.
+							parent.save(function(err) {
+								return session.handleError(err, request);
+							}
+						}
+						var msg = {
+							message: "success",
+							data: doc
+						};
+						session.sendMessage(msg, request);
+					});
 				});
-			});
+			};
+			if (hyperlink != null)
+			{
+				var name = hyperlink.name;
+				var text = hyperlink.text;
+				if (hyperlink.parentID != null)
+				{
+					that.findById(hyperlink.parentID, function(err, parent) {
+						saveObject(parent);
+					});
+				} else
+				{
+					session.handleError("Unable to find parent", requet);
+				}
+			}
 		} else
 		{
 			session.handleError("Data field is empty", request);
