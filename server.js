@@ -26,7 +26,7 @@ models['user'].find({_id : 0}, function (err, docs) {
 		var Index = models['index'];
 		var UserRole = models['user_role'];
 		var Privilege = models['privilege'];
-		var root = new Index(_id: 0, links: []);
+		var root = new Index({links: []});
 		root.save(function (err) {
 			if (err) return console.log("Unable to create root index: " + err);
 			var adminPriv = new Privilege({resources: ["*"], operations: ["*"]});
