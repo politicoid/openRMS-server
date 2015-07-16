@@ -70,6 +70,8 @@ function createSchema(format, visible)
 	// This is so the server will only send models which are set to visible
 	schema.statics.visible = function() { return visible; };
 	schema.statics.keys = function() { return keys; };
+	
+	// Prevent internal information from being sent to the client
 	schema.methods.toJSON = function() {
 		var obj = this.toObject();
 		for (var i = 0; i < internals.length; i++)
@@ -85,8 +87,9 @@ function createSchema(format, visible)
 		var data = request.data;
 		if (data != null)
 		{
-			data.updated_at = new Date();
-			data.created_at = data.updated_at;
+			data.updated_on = new Date();
+			data.created_on = data.updated_on;
+			data.fs = [];
 			var object = new that(data);
 			object.save(function(err) {
 				if (err) return session.handleError(err, request);
@@ -177,10 +180,9 @@ function createSchema(format, visible)
 	};
 	schema.statics.read = function(request, session) {
 		var data = request.data;
-		var id = null;
 		if (data != null)
 		{
-			id = data.id;
+			var id = data.id;
 			var populate = data.populate;
 			if (id != null)
 			{
@@ -194,6 +196,67 @@ function createSchema(format, visible)
 						data: doc
 					};
 					sendMessage(msg, request);
+				});
+			} else if (data.hyperlink != null)
+			{
+				// Access resource by virtual filesystem location
+				var that = this;
+				var hyperlink = data.hyperlink;
+				this.findById(0, function (err, doc) {
+					if (err) return session.handleError(err, request);
+					// Remove leading and **trailing** backslashes
+					if hyperlink.startsWith("/")
+						hyperlink = hyperlink.substring(1);
+					var list = hyperlink.split("/");
+					if (list.length > 0 && hyperlink != "")
+					{	
+						int i = 0;
+						// Parse the hyperlink until the end or until resource not found
+						var parse = function()
+						{
+							var link = doc.fs[list[i]];
+							if (i < list.length && link != null)
+							{
+								// doc == null means the resource is external
+								if (link.doc == null)
+								{
+									var url = link.url;
+									// Append remaining section of the hyperlink to the url
+									var sublist = list.slice(i+1, list.length - 1);
+									if (!url.endsWith("/"))
+										url = url + "/";
+									url = url + sublist.join("/");
+									// Tell the client that the resource is foreign
+									var msg = {
+										message: "foreign",
+										data: url
+									};
+								} else
+								{
+									doc = link.doc;
+									i = i + 1;
+									parse();
+								}
+							} else if (link == null)
+							{
+								session.handleError("resource not found", request);
+							} else
+							{
+								var msg = {
+									message: "success",
+									data: doc
+								};
+								sendMessage(msg, request);
+							};
+						}
+					} else
+					{
+						var msg = {
+							message: "success",
+							data: doc
+						};
+						sendMessage(msg, request);
+					}
 				});
 			}
 		}
@@ -301,29 +364,3 @@ CustomModel.statics.create = function(request, session) {
 };
 createModel(CustomModel, "custom_model");
 */
-
-// Include temporarily for project
-var ArtifactTypeSchema = {
-	name				: {type: String, required: true, trim: true}
-};
-
-var ArtifactSchema = {
-	catalog_number		: { type: String, trim: true },
-	artifact_type		: { type: Number, parent: "artifact_type" },
-	dimensions			: { type: String },
-	description			: { type: String, required: true, trim: true},
-	date				: { type: String }
-};
-
-var ExcavationSchema = {
-	crew_chief			: {type: Number, parent: "user"},
-	artifacts			: [ {type: Number, parent: "artifact"} ]
-};
-
-var ArtifactType = createSchema(ArtifactTypeSchema);
-var Artifact = createSchema(ArtifactSchema);
-var Excavation = createSchema(ExcavationSchema);
-
-createModel(ArtifactType, "artifact_type");
-createModel(Artifact, "artifact");
-createModel(Excavation, "excavation");
