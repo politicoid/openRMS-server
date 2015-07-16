@@ -28,6 +28,14 @@ if (typeof JSON.clone !== "function")
     };
 }
 
+// Index is used within the createSchema method, so it needs to be defined before everything else
+var IndexSchema = {
+	links			: [ { name: String, text: String, doc: Number, url: String} ]
+};
+
+IndexSchema.plugin(autoIncrement.plugin, name);
+var Index = mongoose.model("index", IndexSchema);
+
 function createSchema(format, visible)
 {
 	if (visible == null)
@@ -91,7 +99,6 @@ function createSchema(format, visible)
 			doc.updated_on = new Date();
 			doc.created_on = data.updated_on;
 			// Eventually replace with a function so it's possible to create dynamics FS
-			doc.fs = [];
 			var object = new that(doc);
 			var hyperlink = data.hyperlink;
 			var saveObject = function(parent) {
@@ -102,6 +109,7 @@ function createSchema(format, visible)
 						if (parent != null)
 						{
 							// Problem with this method of error handling is the document was saved, just not added to parent. But this type of error shouldn't happen.
+							parent.index.push({name: hyperlink.name, text: hyperlink.text});
 							parent.save(function(err) {
 								return session.handleError(err, request);
 							}
@@ -116,11 +124,9 @@ function createSchema(format, visible)
 			};
 			if (hyperlink != null)
 			{
-				var name = hyperlink.name;
-				var text = hyperlink.text;
 				if (hyperlink.parentID != null)
 				{
-					that.findById(hyperlink.parentID, function(err, parent) {
+					Index.findById(hyperlink.parentID, function(err, parent) {
 						saveObject(parent);
 					});
 				} else
@@ -228,7 +234,7 @@ function createSchema(format, visible)
 				// Access resource by virtual filesystem location
 				var that = this;
 				var hyperlink = data.hyperlink;
-				this.findById(0, function (err, doc) {
+				Index.findById(0, function (err, doc) {
 					if (err) return session.handleError(err, request);
 					// Remove leading and **trailing** backslashes
 					if hyperlink.startsWith("/")
@@ -240,7 +246,7 @@ function createSchema(format, visible)
 						// Parse the hyperlink until the end or until resource not found
 						var parse = function()
 						{
-							var link = doc.fs[list[i]];
+							var link = doc.index[list[i]];
 							if (i < list.length && link != null)
 							{
 								// doc == null means the resource is external
@@ -259,9 +265,11 @@ function createSchema(format, visible)
 									};
 								} else
 								{
-									doc = link.doc;
-									i = i + 1;
-									parse();
+									Index.findById(link.doc, function (err, doc) {
+										if (err) return session.handleError(err, request);									doc = link.doc;
+										i = i + 1;
+										parse();
+									});
 								}
 							} else if (link == null)
 							{
@@ -294,6 +302,9 @@ function createModel(schema, name)
 	schema.plugin(autoIncrement.plugin, name);
 	exports[name] = mongoose.model(name, schema);
 }
+
+Index = createSchema(IndexSchema);
+createModel(Index, "index");
 
 var UserSchema = {
 	username		: { type: String, required: true, trim: true }
