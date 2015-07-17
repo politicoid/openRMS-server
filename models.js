@@ -28,20 +28,14 @@ if (typeof JSON.clone !== "function")
     };
 }
 
-// Index is used within the createSchema method, so it needs to be defined before everything else
-var IndexSchema = {
-	links			: [ { name: String, text: String, doc: Number, url: String} ]
-};
-
-IndexSchema.plugin(autoIncrement.plugin, name);
-var Index = mongoose.model("index", IndexSchema);
-
 function createSchema(format, visible)
 {
 	if (visible == null)
 		visible = true;
 	format.created_on = {type: Date, internal: true};
 	format.updated_on = {type: Date, internal: true};
+	format.links = [ { name: String, text: String, doc: Number, url: String} ];
+	format.index = {type: Number, ref: "index"}
 	var internals = [];
 	var ignores = [];
 	var keys = {};
@@ -100,7 +94,7 @@ function createSchema(format, visible)
 			doc.created_on = data.updated_on;
 			// Eventually replace with a function so it's possible to create dynamics FS
 			var object = new that(doc);
-			var hyperlink = data.hyperlink;
+			var url = data.hyperlink;
 			var saveObject = function(parent) {
 				object.save(function(err) {
 					if (err) return session.handleError(err, request);
@@ -109,7 +103,7 @@ function createSchema(format, visible)
 						if (parent != null)
 						{
 							// Problem with this method of error handling is the document was saved, just not added to parent. But this type of error shouldn't happen.
-							parent.index.push({name: hyperlink.name, text: hyperlink.text});
+							parent.index.push({name: hyperlink.name, text: hyperlink.text, object._id});
 							parent.save(function(err) {
 								return session.handleError(err, request);
 							}
@@ -233,14 +227,14 @@ function createSchema(format, visible)
 			{
 				// Access resource by virtual filesystem location
 				var that = this;
-				var hyperlink = data.hyperlink;
+				var url = data.url;
 				Index.findById(0, function (err, doc) {
 					if (err) return session.handleError(err, request);
 					// Remove leading and **trailing** backslashes
-					if hyperlink.startsWith("/")
-						hyperlink = hyperlink.substring(1);
-					var list = hyperlink.split("/");
-					if (list.length > 0 && hyperlink != "")
+					if url.startsWith("/")
+						url = url.substring(1);
+					var list = url.split("/");
+					if (list.length > 0 && url != "")
 					{	
 						int i = 0;
 						// Parse the hyperlink until the end or until resource not found
@@ -387,6 +381,14 @@ var Privilege = createSchema(PrivilegeSchema);
 createModel(User, "user");
 createModel(Privilege, "privilege");
 createModel(UserRole, "user_role");
+
+var TextDocumentSchema = {
+	content: {type: String, required: true},
+	mime_type: "text"
+};
+
+var TextDocument = createSchema(TextDocumentSchema);
+createModel(TextDocument, "text");
 
 /*
 // Custom Model schema

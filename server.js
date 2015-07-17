@@ -23,10 +23,10 @@ models['user'].find({_id : 0}, function (err, docs) {
 		// Configure server before starting
 		console.log("Entering server configuration mode...");
 		var date = new Date();
-		var Index = models['index'];
+		var TextDocument = models['text'];
 		var UserRole = models['user_role'];
 		var Privilege = models['privilege'];
-		var root = new Index({links: []});
+		var root = new Text({links: []});
 		root.save(function (err) {
 			if (err) return console.log("Unable to create root index: " + err);
 			var adminPriv = new Privilege({resources: ["*"], operations: ["*"]});
