@@ -405,15 +405,3 @@ createModel(UserRole, "user_role");
 
 var TextDocument = createSchema(TextDocumentSchema);
 createModel(TextDocument, "text");
-
-/* TODO
- * Importing custom models
- * -----------------------
- * There are two options:
- * 1. Import files
- * 2. Some kind of model management service similar to DNS
- *
- * Rendering Templates
- * -------------------
- * Easiest method is to use Polymer 1.0, but then I'm relying on a system which could easily change
-*/
