@@ -28,13 +28,24 @@ if (typeof JSON.clone !== "function")
     };
 }
 
+// TextDocument is used in the createSchema function, so it needs to be defined beforehand
+var TextDocumentSchema = {
+	content: {type: String, required: true},
+	mime_type: "text"
+};
+
+schema.plugin(autoIncrement.plugin, "text");
+var TextDocument = mongoose.model("text", TextDocumentSchema);
+
+
+// Take a schema definition and add in framework components 
 function createSchema(format, visible)
 {
 	if (visible == null)
 		visible = true;
 	format.created_on = {type: Date, internal: true};
 	format.updated_on = {type: Date, internal: true};
-	format.links = [ { name: String, text: String, doc: Number, url: String} ];
+	format.links = [ { name: String, text: String, foreign: Boolean, model: String, location: String} ];
 	format.index = {type: Number, ref: "index"}
 	var internals = [];
 	var ignores = [];
@@ -94,7 +105,7 @@ function createSchema(format, visible)
 			doc.created_on = data.updated_on;
 			// Eventually replace with a function so it's possible to create dynamics FS
 			var object = new that(doc);
-			var url = data.hyperlink;
+			var url = data.url;
 			var saveObject = function(parent) {
 				object.save(function(err) {
 					if (err) return session.handleError(err, request);
@@ -116,17 +127,23 @@ function createSchema(format, visible)
 					});
 				});
 			};
-			if (hyperlink != null)
+			if (url != null)
 			{
-				if (hyperlink.parentID != null)
+				if (url.parentID != null)
 				{
-					Index.findById(hyperlink.parentID, function(err, parent) {
+					// Get the correct model
+					var model = exports[url.model];
+					if (model == null) return session.handleError("Unknown model type of parent", request);
+					model.findById(url.parentID, function(err, parent) {
 						saveObject(parent);
 					});
 				} else
 				{
 					session.handleError("Unable to find parent", requet);
 				}
+			} else
+			{
+				// Save without any parent - Might not use this option
 			}
 		} else
 		{
@@ -187,6 +204,7 @@ function createSchema(format, visible)
 			}
 		}
 	};
+	// Remove does not yet remove dead links from parents
 	schema.statics.remove = function(request, session) {
 		var data = request.data;
 		var id = null;
@@ -223,12 +241,12 @@ function createSchema(format, visible)
 					};
 					sendMessage(msg, request);
 				});
-			} else if (data.hyperlink != null)
+			} else if (data.url != null)
 			{
 				// Access resource by virtual filesystem location
 				var that = this;
 				var url = data.url;
-				Index.findById(0, function (err, doc) {
+				TextDocument.findById(0, function (err, doc) {
 					if (err) return session.handleError(err, request);
 					// Remove leading and **trailing** backslashes
 					if url.startsWith("/")
@@ -243,8 +261,8 @@ function createSchema(format, visible)
 							var link = doc.index[list[i]];
 							if (i < list.length && link != null)
 							{
-								// doc == null means the resource is external
-								if (link.doc == null)
+								// Check if the resource is foreign
+								if (link.foreign == true)
 								{
 									var url = link.url;
 									// Append remaining section of the hyperlink to the url
@@ -259,7 +277,9 @@ function createSchema(format, visible)
 									};
 								} else
 								{
-									Index.findById(link.doc, function (err, doc) {
+									var model = exports[link.model];
+									if (model == null) return session.handleError("Unknown model", request);
+									model.findById(Number(link.location), function (err, doc) {
 										if (err) return session.handleError(err, request);									doc = link.doc;
 										i = i + 1;
 										parse();
@@ -291,14 +311,15 @@ function createSchema(format, visible)
 	};
 	return schema;
 }
+
+// Take finalized schema and create a model, adding it to the list of models available to the server
 function createModel(schema, name)
 {
 	schema.plugin(autoIncrement.plugin, name);
 	exports[name] = mongoose.model(name, schema);
 }
 
-Index = createSchema(IndexSchema);
-createModel(Index, "index");
+// Built in models
 
 var UserSchema = {
 	username		: { type: String, required: true, trim: true }
@@ -382,24 +403,17 @@ createModel(User, "user");
 createModel(Privilege, "privilege");
 createModel(UserRole, "user_role");
 
-var TextDocumentSchema = {
-	content: {type: String, required: true},
-	mime_type: "text"
-};
-
 var TextDocument = createSchema(TextDocumentSchema);
 createModel(TextDocument, "text");
 
-/*
-// Custom Model schema
-var CustomModelSchema = {
-	id					: {type: String, required: true, trim: true },
-	family				: {type: String, required: true, trim: true }
-};
-
-var CustomModel = createSchema(CustomModelSchema);
-CustomModel.statics.create = function(request, session) {
-	
-};
-createModel(CustomModel, "custom_model");
+/* TODO
+ * Importing custom models
+ * -----------------------
+ * There are two options:
+ * 1. Import files
+ * 2. Some kind of model management service similar to DNS
+ *
+ * Rendering Templates
+ * -------------------
+ * Easiest method is to use Polymer 1.0, but then I'm relying on a system which could easily change
 */
