@@ -16,3 +16,6 @@ The code as data system that is being used opens up a lot of potential security 
 
 ## Clean up multiple access methods
 Because of the original nature of the software package, and the desire to add a virtual file system, there is some question of how well the database access method and filesystem access method will integrate smoothly.
+
+## Standardize error messages
+A client won't be able easily understand the human readable error messages.

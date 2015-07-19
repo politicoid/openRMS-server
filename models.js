@@ -17,7 +17,7 @@ var mongoose = require('mongoose'),
 	autoIncrement = require('mongoose-auto-increment'),
 	crypto = require('crypto');
 
-var connection = mongoose.connect('mongodb://localhost/agora');
+var connection = mongoose.connect('mongodb://localhost/openrms');
 autoIncrement.initialize(connection);
 
 if (typeof JSON.clone !== "function")
@@ -27,16 +27,6 @@ if (typeof JSON.clone !== "function")
         return JSON.parse(JSON.stringify(obj));
     };
 }
-
-// TextDocument is used in the createSchema function, so it needs to be defined beforehand
-var TextDocumentSchema = {
-	content: {type: String, required: true},
-	mime_type: "text"
-};
-
-schema.plugin(autoIncrement.plugin, "text");
-var TextDocument = mongoose.model("text", TextDocumentSchema);
-
 
 // Take a schema definition and add in framework components 
 function createSchema(format, visible)
@@ -114,10 +104,10 @@ function createSchema(format, visible)
 						if (parent != null)
 						{
 							// Problem with this method of error handling is the document was saved, just not added to parent. But this type of error shouldn't happen.
-							parent.index.push({name: hyperlink.name, text: hyperlink.text, object._id});
+							parent.index.push({name: url.name, text: url.text, foreign: false, location: url.location});
 							parent.save(function(err) {
 								return session.handleError(err, request);
-							}
+							});
 						}
 						var msg = {
 							message: "success",
@@ -246,15 +236,15 @@ function createSchema(format, visible)
 				// Access resource by virtual filesystem location
 				var that = this;
 				var url = data.url;
-				TextDocument.findById(0, function (err, doc) {
+				exports["text"].findById(0, function (err, doc) {
 					if (err) return session.handleError(err, request);
 					// Remove leading and **trailing** backslashes
-					if url.startsWith("/")
+					if (url.indexOf("/") === 0)
 						url = url.substring(1);
 					var list = url.split("/");
 					if (list.length > 0 && url != "")
 					{	
-						int i = 0;
+						var i = 0;
 						// Parse the hyperlink until the end or until resource not found
 						var parse = function()
 						{
@@ -292,7 +282,10 @@ function createSchema(format, visible)
 							{
 								var msg = {
 									message: "success",
-									data: doc
+									data: { doc: doc,
+									// These two are needed because the server might not know the data type of the resource if getting by URL
+									resource: doc.constructor.modelName,
+									mime_type: doc.constructor.mime_type}
 								};
 								sendMessage(msg, request);
 							};
@@ -301,7 +294,7 @@ function createSchema(format, visible)
 					{
 						var msg = {
 							message: "success",
-							data: doc
+							data: { doc: doc, resource: doc.constructor.modelName, mime_type: doc.constructor.mime_type }
 						};
 						sendMessage(msg, request);
 					}
@@ -403,5 +396,11 @@ createModel(User, "user");
 createModel(Privilege, "privilege");
 createModel(UserRole, "user_role");
 
+var TextDocumentSchema = {
+	content: {type: String, required: true}
+};
+
 var TextDocument = createSchema(TextDocumentSchema);
+TextDocument.statics.mime_type = "text";
+
 createModel(TextDocument, "text");

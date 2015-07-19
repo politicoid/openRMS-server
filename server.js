@@ -14,7 +14,7 @@ var start = function()
 	app.listen(app.get('port'));
 };
 
-models['user'].find({_id : 0}, function (err, docs) {
+models['text'].find({_id : 0}, function (err, docs) {
 	if (docs.length)
 	{
 		start();
@@ -26,7 +26,7 @@ models['user'].find({_id : 0}, function (err, docs) {
 		var TextDocument = models['text'];
 		var UserRole = models['user_role'];
 		var Privilege = models['privilege'];
-		var root = new Text({links: []});
+		var root = new TextDocument({links: [], content: "Welcome..."});
 		root.save(function (err) {
 			if (err) return console.log("Unable to create root index: " + err);
 			var adminPriv = new Privilege({resources: ["*"], operations: ["*"]});
