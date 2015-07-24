@@ -4,14 +4,52 @@ var http = require('http'),
 	app = express(),
 	models = require('./models');
 
+var loadModels = function(manifest)
+{
+	var fs = require("fs");
+	manifest.models.forEach(function(mod) {
+		console.log(mod);
+		// Load each model
+		if (mod.schema_file != null)
+		{
+			var schema;
+			fs.readFile(__dirname + "/models/" + mod.schema_file, 'utf8', function(err, data) {
+				if (err) throw err;
+				// Compiling the schema requires actual code compilation, so require('vm') will be needed
+				schema = JSON.parse(data);
+				console.log(schema);
+			});
+		}
+	});
+};
 
 var start = function()
 {
-	console.log("Starting server...");
-	app.set('port', process.env.PORT || 8080);
-	app.use(express.static(__dirname + '/../client'));
-	var server = require('./dataserver')(app, models);
-	app.listen(app.get('port'));
+	console.log("Loading config file...");
+	var fs = require("fs");
+	var config;
+	fs.readFile(__dirname + '/conf/openrms.conf', 'utf8', function (err, data) {
+		if (err) throw err;
+		config = JSON.parse(data);
+		if (config != null)
+		{
+			if (config.port == null) config.port = 8080;
+			if (config.data_port == null) config.data_port = 8081;
+			app.set('port', config.port);
+			app.use(express.static(__dirname + '/../client'));
+			console.log("Loading models...");
+			var manifest;
+			fs.readFile(__dirname + "/conf/models.manifest", "utf8", function(err, data) {
+				if (err) throw err;
+				manifest = JSON.parse(data);
+				loadModels(manifest);
+				console.log("Starting server...");
+				var server = require('./dataserver')(app, config.data_port, models);
+				app.listen(app.get('port'));
+				console.log("Server running...");
+			});
+		}
+	});
 };
 
 models['text'].find({_id : 0}, function (err, docs) {

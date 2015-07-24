@@ -1,11 +1,11 @@
 var uuid = require('node-uuid');
 
 // Replacing model[key] with models.get(key) and having the method return the model from the database should work to allow custom models on the fly
-var dataserver = function(app, models)
+var dataserver = function(app, data_port, models)
 {
 	WebSocketServer = require('ws').Server;
 	var sessions = {};
-	var wss = new WebSocketServer({port: 8081});
+	var wss = new WebSocketServer({port: data_port});
 	wss.on('connection', function(ws) {
 		var session = {};
 		do
@@ -38,6 +38,7 @@ var dataserver = function(app, models)
 				if (resource == "model")
 				{
 					var operation = request.operation;
+					// Use require('vm') to create a sandbox environment!
 					switch (operation)
 					{
 						case "read":
