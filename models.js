@@ -12,6 +12,9 @@
  * Keys:
  * human_readable	- This key is human readable
  */
+
+exports["models"] = [];
+
 var mongoose = require('mongoose'),
 	Schema = mongoose.Schema,
 	autoIncrement = require('mongoose-auto-increment'),
@@ -309,15 +312,17 @@ function createSchema(format, visible)
 function createModel(schema, name)
 {
 	schema.plugin(autoIncrement.plugin, name);
-	exports[name] = mongoose.model(name, schema);
+	exports["models"][name] = mongoose.model(name, schema);
 }
 
+exports.createSchema = createSchema;
+exports.createModel = createModel;
 // Built in models
 
 var UserSchema = {
-	username		: { type: String, required: true, trim: true }
+    username			: { type: String, required: true, trim: true }
   , salt			: { type: String, required: true, trim: false, internal: true }
-  , password		: { type: String, required: true, trim: false, ignore_null: true }
+  , password			: { type: String, required: true, trim: false, ignore_null: true }
   , first			: { type: String, trim: true }
   , last			: { type: String, trim: true }
   , friends			: [ { type: Number, ref: "user" } ]
@@ -326,9 +331,9 @@ var UserSchema = {
 };
 
 var UserRoleSchema = {
-	role			: { type: String, required: true, trim: true }
+    role			: { type: String, required: true, trim: true }
   , users			: [ { type: Number, parent: "user" } ]
-  , privileges		: [ { type: Number, required: true, ref: "privilege" } ]
+  , privileges			: [ { type: Number, required: true, ref: "privilege" } ]
   , keys			: { human_readable: 'role' }
 };
 

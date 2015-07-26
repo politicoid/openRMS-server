@@ -1,23 +1,33 @@
 // Can't get everything to run on a single port so information is on 8081 and HTTP server is on 8080
 var http = require('http'),
 	express = require('express'),
-	app = express(),
-	models = require('./models');
+	app = express();
+
+var model = require('./models');
+var models = model.models;
 
 var loadModels = function(manifest)
 {
-	var fs = require("fs");
+	var fs = require('fs');
+	// I don't think this is the best way to set up the functions to create new models, but it should at least work
+	var vm = require('vm');
+	var context = {
+		createSchema: model.createSchema,
+		createModel: models.createModel,
+		exports: model
+	};
 	manifest.models.forEach(function(mod) {
 		console.log(mod);
 		// Load each model
 		if (mod.schema_file != null)
 		{
-			var schema;
-			fs.readFile(__dirname + "/models/" + mod.schema_file, 'utf8', function(err, data) {
+			var schemau;
+			fs.readFile(__dirname + '/models/' + mod.schema_file, 'utf8', function(err, data) {
 				if (err) throw err;
 				// Compiling the schema requires actual code compilation, so require('vm') will be needed
-				schema = JSON.parse(data);
-				console.log(schema);
+				// Creating a new context each time should help keep each model isolated from one another
+				console.log(data);
+				vm.runInNewContext(data, context);
 			});
 		}
 	});
