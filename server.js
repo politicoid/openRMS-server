@@ -6,31 +6,36 @@ var http = require('http'),
 var model = require('./models');
 var models = model.models;
 
-var loadModels = function(manifest)
+var loadModels = function(manifest, func)
 {
 	var fs = require('fs');
 	// I don't think this is the best way to set up the functions to create new models, but it should at least work
 	var vm = require('vm');
-	var context = {
-		createSchema: model.createSchema,
-		createModel: models.createModel,
-		exports: model
-	};
-	manifest.models.forEach(function(mod) {
-		console.log(mod);
-		// Load each model
+	// Not working because fs.readFile is threaded. I need to have it work recursively.
+	var i = 0;
+	var next = function() {
+		var context = {
+			createSchema: model.createSchema,
+			createModel: model.createModel,
+			console: console,
+			exports: models
+		};
+		var mod = manifest.models[i];
+		if (mod == null) return func();
 		if (mod.schema_file != null)
 		{
-			var schemau;
+			var schema;
 			fs.readFile(__dirname + '/models/' + mod.schema_file, 'utf8', function(err, data) {
 				if (err) throw err;
 				// Compiling the schema requires actual code compilation, so require('vm') will be needed
 				// Creating a new context each time should help keep each model isolated from one another
-				console.log(data);
-				vm.runInNewContext(data, context);
+				vm.runInNewContext('createModel(createSchema(' + data + '), "' + mod.name + '");', context);
+				i++;
+				next();
 			});
 		}
-	});
+	};
+	next();
 };
 
 var start = function()
@@ -52,11 +57,12 @@ var start = function()
 			fs.readFile(__dirname + "/conf/models.manifest", "utf8", function(err, data) {
 				if (err) throw err;
 				manifest = JSON.parse(data);
-				loadModels(manifest);
-				console.log("Starting server...");
-				var server = require('./dataserver')(app, config.data_port, models);
-				app.listen(app.get('port'));
-				console.log("Server running...");
+				loadModels(manifest, function() {
+					console.log("Starting server...");
+					var server = require('./dataserver')(app, config.data_port, models);
+					app.listen(app.get('port'));
+					console.log("Server running...");
+				});
 			});
 		}
 	});
