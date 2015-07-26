@@ -1,0 +1,5 @@
+{
+	"models" : [
+		{ "name": "artifact" , "schema_file": "archbase/schemas/artifact.schema", "template_file": "archbase/views/artifact.html", "data_bindings": { "id": "_id" } }
+	] 
+}
