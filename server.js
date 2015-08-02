@@ -8,12 +8,23 @@ var models = model.models;
 
 var loadModels = function(manifest, func)
 {
+	var Template = models["template"];
 	var fs = require('fs');
 	// I don't think this is the best way to set up the functions to create new models, but it should at least work
 	var vm = require('vm');
 	// Not working because fs.readFile is threaded. I need to have it work recursively.
-	var i = 0;
-	var next = function() {
+	var loadModel = function(mod, template) {
+		if (mod.schema_file != null)
+		{
+			var data = fs.readFileSync(__dirname + '/models/' + mod.schema_file, 'utf8').toString();
+			// Compiling the schema requires actual code compilation, so require('vm') will be needed
+			// Creating a new context each time should help keep each model isolated from one another
+			// I need to figure out how to bind the template and the model together
+			vm.runInNewContext('createModel(createSchema(' + data + '), "' + mod.name + '");', context);
+		}
+	};
+	var mods = manifest.models;
+	for (var i = 0; i < mods.length; i++) {
 		var context = {
 			createSchema: model.createSchema,
 			createModel: model.createModel,
@@ -22,20 +33,24 @@ var loadModels = function(manifest, func)
 		};
 		var mod = manifest.models[i];
 		if (mod == null) return func();
-		if (mod.schema_file != null)
-		{
-			var schema;
-			fs.readFile(__dirname + '/models/' + mod.schema_file, 'utf8', function(err, data) {
-				if (err) throw err;
-				// Compiling the schema requires actual code compilation, so require('vm') will be needed
-				// Creating a new context each time should help keep each model isolated from one another
-				vm.runInNewContext('createModel(createSchema(' + data + '), "' + mod.name + '");', context);
-				i++;
-				next();
-			});
+		var template = null;
+		if (mod.template_file != null) {
+			var data = fs.readFileSync(__dirname + '/models/' + mod.template_file, 'utf8').toString();
+			// Not sure how to check for errors here
+			template = new Template({ html: data });
+		} else if (mod.template != null) {
+			template = new Template({ html: mod.template });
 		}
-	};
-	next();
+		if (template != null) {
+			template.save(function(err) {
+				if (err) throw err;
+				loadModel(mod, template);
+			});
+		} else
+		{
+			loadModel(mod, null);
+		}
+	}
 };
 
 var start = function()

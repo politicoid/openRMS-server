@@ -343,6 +343,10 @@ var PrivilegeSchema = {
   , user_role		: { type: String, parent: "user_role" }
 };
 
+var TemplateSchema = {
+	html			: [ { type: String, required: true} ]	
+};
+
 var AuthorizationSchema = {
 	
 };
