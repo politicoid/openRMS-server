@@ -19,3 +19,6 @@ Because of the original nature of the software package, and the desire to add a 
 
 ## Standardize error messages
 A client won't be able easily understand the human readable error messages.
+
+## UML Integration
+This may or may not be a useful idea. However, since UML is a general purpose modeling language, and openRMS is a general purpose resource management system, it seems like UML could be a very powerful tool for the development and management of information in openRMS.
