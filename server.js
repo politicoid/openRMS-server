@@ -13,19 +13,18 @@ var loadModels = function(manifest, func)
 	// I don't think this is the best way to set up the functions to create new models, but it should at least work
 	var vm = require('vm');
 	// Not working because fs.readFile is threaded. I need to have it work recursively.
-	var loadModel = function(mod, template) {
+	var loadModel = function(mod, sandbox, template) {
 		if (mod.schema_file != null)
 		{
 			var data = fs.readFileSync(__dirname + '/models/' + mod.schema_file, 'utf8').toString();
-			// Compiling the schema requires actual code compilation, so require('vm') will be needed
 			// Creating a new context each time should help keep each model isolated from one another
 			// I need to figure out how to bind the template and the model together
-			vm.runInNewContext('createModel(createSchema(' + data + '), "' + mod.name + '");', context);
+			vm.runInNewContext('createModel(createSchema(' + data + '), "' + mod.name + '");', sandbox);
 		}
 	};
 	var mods = manifest.models;
 	for (var i = 0; i < mods.length; i++) {
-		var context = {
+		var sandbox = {
 			createSchema: model.createSchema,
 			createModel: model.createModel,
 			console: console,
@@ -44,11 +43,11 @@ var loadModels = function(manifest, func)
 		if (template != null) {
 			template.save(function(err) {
 				if (err) throw err;
-				loadModel(mod, template);
+				loadModel(mod, sandbox, template);
 			});
 		} else
 		{
-			loadModel(mod, null);
+			loadModel(mod, sandbox, null);
 		}
 	}
 };

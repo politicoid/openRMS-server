@@ -2,8 +2,8 @@
 
 ## Importing custom models
 There are two options:
-1. Import files
-2. Some kind of model management service similar to DNS
+* Import files
+* Some kind of model management service similar to DNS
 
 ## Rendering templates
 Easiest method is to use Polymer 1.0, but then I'm relying on a system which could easily change.
@@ -22,3 +22,6 @@ A client won't be able easily understand the human readable error messages.
 
 ## UML Integration
 This may or may not be a useful idea. However, since UML is a general purpose modeling language, and openRMS is a general purpose resource management system, it seems like UML could be a very powerful tool for the development and management of information in openRMS.
+
+## Direct Browser Integration
+I could write my own browser, but I think a plugin would be enough. Vivaldi Browser is highly customizable, and is a good option.

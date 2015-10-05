@@ -343,9 +343,9 @@ var PrivilegeSchema = {
   , user_role		: { type: String, parent: "user_role" }
 };
 
-var TemplateSchema = {
+createModel(createSchema({
 	html			: [ { type: String, required: true} ]	
-};
+}), "template");
 
 var AuthorizationSchema = {
 	
