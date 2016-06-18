@@ -1,0 +1,6 @@
+{
+	name	: { type: String, required: true, trim: true },
+	item	: { type: Number, parent: "item" },
+	option	: { type: Number, ref: "item" },
+	keys	: { human_readable: 'name' }
+ }

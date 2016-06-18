@@ -1,0 +1,7 @@
+{
+	name		: { type: String, required: true, trim: true },
+	url			: { type: String, required: true, trim: true },
+ 	short_desc	: { type: String, required: true, trim: true },
+	items		: [ { type: Number, ref: "item", ignore_null: true } ],
+	keys		: { human_readable: 'name' }
+}

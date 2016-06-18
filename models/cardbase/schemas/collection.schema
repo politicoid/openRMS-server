@@ -1,0 +1,5 @@
+{
+	id		: {type: Number},
+	cards	: [{type: Number, ref: "card"}],
+ 	keys	: { human_readable: 'name' }
+}

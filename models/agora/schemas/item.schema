@@ -1,0 +1,11 @@
+{
+	name			: { type: String, required: true, trim: true },
+	shop			: { type: Number, required: true, parent: "shop" },	
+	sku				: { type: String, required: true, trim: true },
+	short_desc		: { type: String, required: true, trim: true },
+	long_desc		: { type: String, required: true, trim: true, name: 'Description', media_type: 'text/html' },
+	prices			: [{type: Number, ref: "price"}],
+	item_options	: [{type: Number, ref: "item_option"}],
+	item_categories	: [{type: Number, parent: "item_category"}],
+ 	keys			: { human_readable: 'name' }
+}

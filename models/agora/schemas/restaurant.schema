@@ -1,0 +1,4 @@
+{
+	extends	: [ "shop" ],
+	menus	: [ { type: Number, ref: "menu", ignore_null: true } ]
+}

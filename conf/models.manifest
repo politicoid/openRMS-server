@@ -1,15 +1,15 @@
 {
 	"models" : [
 		{
-			"name": "artifact",
-			"schema_file": "archbase/schemas/artifact.schema",
+			"name": "shop",
+			"schema_file": "agora/schemas/shop.schema",
 			"template": "<div></div>",
-			"data_bindings": { "catalog_number": "catelog_number" }
+			"data_bindings": {  }
 		},
 		{
-			"name": "artifact_type",
-			"schema_file": "archbase/schemas/artifact_type.schema",
-			"template": "<div></div>",
+			"name": "restaurant",
+			"schema_file": "agora/schemas/restaurant.schema",
+			"template": <div></div>",
 			"data_bindings": { }
 		}
 	] 

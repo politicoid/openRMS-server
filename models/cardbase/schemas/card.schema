@@ -1,0 +1,5 @@
+{
+	name		: { type: String, required: true, trim: true },
+	number		: { type: Number },
+ 	keys		: { human_readable: 'name' }
+}

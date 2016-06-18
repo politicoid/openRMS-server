@@ -8,6 +8,7 @@
  * internal			- Only used by the server. Should not be viewed or set by clients (automatically sets ignore_null)
  * parent			- Parent object (automatically embeds ref option)
  * media_type		- Media types as listed in official registry of media types: http://www.iana.org/assignments/media-types/media-types.xhtml
+ * extends			- Works like class extensions 
  * 
  * Keys:
  * human_readable	- This key is human readable

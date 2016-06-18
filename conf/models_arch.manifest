@@ -1,0 +1,16 @@
+{
+	"models" : [
+		{
+			"name": "artifact",
+			"schema_file": "archbase/schemas/artifact.schema",
+			"template": "<div></div>",
+			"data_bindings": { "catalog_number": "catelog_number" }
+		},
+		{
+			"name": "artifact_type",
+			"schema_file": "archbase/schemas/artifact_type.schema",
+			"template": "<div></div>",
+			"data_bindings": { }
+		}
+	] 
+}
