@@ -9,7 +9,19 @@
 		{
 			"name": "restaurant",
 			"schema_file": "agora/schemas/restaurant.schema",
-			"template": <div></div>",
+			"template": "<div></div>",
+			"data_bindings": { }
+		},
+		{
+			"name": "card_shop",
+			"schema_file": "cardbase/schemas/card_shop.schema",
+			"template": "<div><div>",
+			"data_bindings": { }
+		}, 
+		{
+			"name": "menu",
+			"schema_file": "agora/schemas/menu.schema",
+			"template": "<div></div>",
 			"data_bindings": { }
 		}
 	] 

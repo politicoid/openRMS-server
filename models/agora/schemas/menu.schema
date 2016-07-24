@@ -1,0 +1,4 @@
+{
+	name			: { type: String, required: true, trim: true },
+	items			: { type: Number, ref: "item" }
+}
