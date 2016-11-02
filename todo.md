@@ -25,3 +25,6 @@ This may or may not be a useful idea. However, since UML is a general purpose mo
 
 ## Direct Browser Integration
 I could write my own browser, but I think a plugin would be enough. Vivaldi Browser is highly customizable, and is a good option.
+
+## Include time-capsule option
+If I want people to fee comfortable with including sensitive anthropological information, etc then it needs to be securely encrypted. However, if I want to be an open access scientific information system, then I need a way to override that encryption. Time release cryptography could supply that option.
